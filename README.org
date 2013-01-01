@@ -1,0 +1,42 @@
+* Overview
+
+  Currently this project in early development stage.
+  Any API and features may be completely changed at the release.
+
+* Current progress
+
+** Gerber
+*** Parser
+    *Status*: partial
+    | Feature                 | Status |
+    |-------------------------+--------|
+    | Standard apertures      | +      |
+    | Aperture macros         | -      |
+    | Coordinate recognition  | +      |
+    | Absolute coordinates    | +      |
+    | Incremental coordinates | +      |
+    | Region mode             | +      |
+    | Linear interpolation    | +      |
+    | Circular interpolation  | +      |
+    | Quadrant mode           | +      |
+    | Image polarity          | +      |
+*** Renderer
+    *Status*: partial
+    | Feature                 | Status |
+    |-------------------------+--------|
+    | Standard apertures      | +      |
+    | Aperture macros         | -      |
+    | Absolute coordinates    | +      |
+    | Incremental coordinates | -      |
+    | Region mode             | +      |
+    | Linear interpolation    | +      |
+    | Circular interpolation  | -      |
+    | Quadrant mode           | -      |
+    | Image polarity          | -      |
+
+** Excellon
+*** Parser
+    *Status*: -
+
+*** Renderer
+    *Status*: -
