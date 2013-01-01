@@ -13,7 +13,7 @@
   param = {
     /* fixed parameters */
     strip: null, /* nulls stripping: lead, trail */
-    coord: 'abs', /* coordinate: abs, rel */
+    coord: 'abs', /* coordinate: abs, inc */
     format: { /* coordinate format (fixed) */
       /*x: [integer, fraction]*/
       /*y: [integer, fraction]*/

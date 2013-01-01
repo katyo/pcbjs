@@ -41,7 +41,7 @@
 
 ** Excellon
 *** Parser
-    *Status*: -
+    *Status*: partial
 
 *** Renderer
-    *Status*: -
+    *Status*: partial

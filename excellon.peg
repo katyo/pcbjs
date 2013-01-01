@@ -1,0 +1,128 @@
+// -*- mode:js -*-
+
+{
+  /*
+    Parser based on the Excellon Format Description
+    http://www.excellon.com/manuals/program.htm
+   */
+  var max = Math.max,
+  min = Math.min,
+  unparsed = [],
+  bound = null,
+  param = {
+    version: null, /* format version */
+    units: null, /* coordinate units */
+    coord: 'abs', /* coordinate: abs, rel */
+    strip: null, /* nulls stripping: lead, trail */
+    tools: {}
+  },
+  control = [
+    
+  ],
+  current = {
+    
+  };
+
+  function append(name, data){
+    if(current[name] != data){
+      current[name] = data;
+      control.push({
+        $: name,
+        _: data
+      });
+    }
+  }
+}
+
+start
+  = st+ {
+    return {
+      box: bound,
+      opt: param,
+      ctl: control,
+      unp: unparsed
+    };
+  }
+
+st
+  = _ op $
+
+op /* generic operation */
+  = comment
+  / ignore
+  / version
+  / format
+  / crdmode
+  / tooluse
+  / coord
+  / data:any { unparsed.push(data); }
+
+ignore /* ignored mnemonics */
+  = [M][4][8]
+  / [M][3][0]
+  / [M][7][2]
+  / [G][0][5]
+  / [%]
+
+version /* format version */
+  = [F][M][A][T][,] ver:[12] { param.version = parseInt(ver, 10); }
+
+format /* numeric format */
+  = ( [I][N][C][H] { param.units = 'in'; }
+      / [M][E][T][R][I][C] { param.units = 'mm'; }
+    ) [,] ( [L][Z] { param.strip = 'lead'; } / [T][Z] { param.strip = 'trail'; } )
+
+crdmode /* coordinate mode */
+  = [G][9] mode:[01] { param.coord = mode == 0 ? 'abs' : 'inc'; }
+
+tooluse /* tools configuration */
+  = [T] ( id:id [C] diam:float { param.tools[id] = diam; }
+          / id:id { append('tool', parseInt(id, 10)); } )
+
+coord
+  = [X] x:float [Y] y:float {
+    control.push({
+      $: 'hole',
+      x: x,
+      y: y
+    });
+    var r = 0.5 * param.tools[current.tool];
+    /* bound-box calculation */
+    if(bound === null){
+      bound = {
+        x: [x - r, x + r],
+        y: [y - r, y + r],
+      }
+    }else{
+      bound.x[0] = min(x - r, bound.x[0]);
+      bound.x[1] = max(x + r, bound.x[1]);
+      bound.y[0] = min(y - r, bound.y[0]);
+      bound.y[1] = max(y + r, bound.y[1]);
+    }
+  }
+
+comment
+  = [;] any
+
+int
+  = val:num { return parseInt(val, 10); }
+
+float
+  = val:num { return parseFloat(val); }
+
+num
+  = value:[\-0-9\.]+ { return value.join(''); }
+
+id
+  = value:[0-9]+ { return value.join(''); }
+
+any
+  = ents:[^\*\n]+ { return ents.join(''); }
+
+$
+  = space+
+_
+  = space*
+
+space
+  = [\ \t\n\r]
