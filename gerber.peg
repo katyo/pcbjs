@@ -1,0 +1,217 @@
+// -*- mode: js -*-
+
+{
+  /*
+    Parser based on The Gerber Format Specification
+    http://www.ucamco.com/Portals/0/Documents/Ucamco/RS-274X_Extended_Gerber_Format_Specification_201201.pdf
+   */
+  parser = this;
+  var max = Math.max,
+  min = Math.min,
+  unparsed = [],
+  bound = null,
+  param = {
+    /* fixed parameters */
+    strip: null, /* nulls stripping: lead, trail */
+    coord: 'abs', /* coordinate: abs, rel */
+    format: { /* coordinate format (fixed) */
+      /*x: [integer, fraction]*/
+      /*y: [integer, fraction]*/
+    },
+    units: null,  /* coordinate units (fixed) */
+    polar: 'pos', /* image polarity (fixed) */
+    apert: { /* apertures by id */
+      
+    }
+  },
+  control = [ /* control sequence */
+    
+  ], current = { /* current state of parameters */
+    srpar: { /* step and repeat */
+      x: 1, /* repeat x */
+      y: 1, /* repeat y */
+      i: 0, /* step x */
+      j: 0  /* step y */
+    },
+    level: 'dark',/* level polarity: dark or light */
+    region: false, /* region mode */
+    apert: null,  /* aperture num */
+    quadr: null,  /* quadrant mode: single or multi */
+    inter: null,  /* interpolation mode: lin, cw, ccw */
+    coord: { x:0, y:0, i:0, j:0 } /* point in plane */
+  },
+  coord = {};
+  
+  function norm(a){
+    if(a instanceof Array){
+      a = a.join('');
+    }
+    return a.toLowerCase();
+  }
+  
+  function conv(axis, val){
+    if(axis == 'i') axis = 'x';
+    if(axis == 'j') axis = 'y';
+    var nf = param.format[axis],
+    nl = nf[0] + nf[1],
+    sig = val[0] == '-' ? -1 : 1;
+    val = val.replace(/^\-/, '');
+    val = (param.strip != 'lead' ? val : '') +
+      new Array(nl - val.length + 1).join('0') +
+      (param.strip == 'lead' ? val : '');
+    return parseFloat(val.substr(0, nf[0]) + '.' + val.substr(nf[0])) * sig;
+  }
+  
+  function append(param, value){
+    if(current[param] !== value){
+      current[param] = value;
+      control.push({
+        $:param,
+        _:value
+      });
+    }
+  }
+}
+
+start
+  = ( _ ( [%] st [%] / st ) $ )+ {
+    return {
+      box: bound,
+      opt: param,
+      ctl: control,
+      unp: unparsed
+    };
+  }
+
+st
+  = op [*]+
+
+op /* generic operation */
+  = end
+  / cmt
+  / cfg
+  / ctl
+
+cfg /* config command */
+  = [I][N] name:any { /* image name */
+    param.image = name;
+  }
+  / [F][S] num:[LTD] crd:[AI] fmt* { /* format */
+    param.strip = num == 'L' ? 'lead' : 'tail';
+    param.coord = crd == 'A' ? 'abs' : 'inc';
+  }
+  / [M][O] val:( [M][M] / [I][N] ) { /* units */
+    param.units = val.join('').toLowerCase();
+  }
+  / [I][P] val:( [P][O][S] / [N][E][G] ) { /* polarity */
+    param.polar = val.join('').toLowerCase();
+  }
+  / [A][D] id:apt_id ap:apt_std { /* aperture */
+    param.apert[id] = ap;
+  }
+
+fmt
+  = code:[XY] data:num {
+    param.format[code.toLowerCase()] = [data / 10 ^ 0, data % 10];
+  }
+
+apt_id /* aperture id */
+  = [D] lead:[1-9] tail:id { return parseInt(lead + tail, 10); }
+
+apt_std /* standart apertures */
+  = [C][,] diam:float hole:apt_hole? { return { $:'circ', d:diam, _:hole }; }
+  / [R][,] width:float [X] height:float hole:apt_hole? { return { $:'rect', w:width, h:height, _:hole }; }
+  / [O][,] width:float [X] height:float hole:apt_hole? { return { $:'oval', w:width, h:height, _:hole }; }
+  / [P][,] diam:float [X] verts:int _:( [X] rot:float hole:apt_hole? )? {
+    return { $:'poly', d:diam, v:verts, r:_.rot, _:_.hole }; }
+
+apt_hole
+  = [X] hole:float _:( [X] hole:float )? { return _.hole ? { $:'circ', d:hole } : { $:'rect', w:hole, h:_.hole }; }
+  / { return false; }
+
+ctl /* control command */
+  = ( [G][5][4] )? id:apt_id { /* aperture change */
+    append('apert', id);
+  }
+  / [G][0] op:[1-3] ( act )? { /* interpolation mode */
+    append('inter', op == 1 ? 'lin' : op == 2 ? 'cw' : 'ccw');
+  }
+  / [G][7] us:[0-1] { /* units setup (deprecated) */
+    param.units = param.units || us == '1' ? 'mm' : 'in';
+  }
+  / [G][9] cf:[0-1] { /* coordinate format (deprecated) */
+    param.coord = param.coord || cf == '1' ? 'inc' : 'abs';
+  }
+  / [G][3] st:[67] { /* region mode on/off */
+    append('region', st == '6' ? true : false);
+  }
+  / act
+  / data:any { unparsed.push(data); }
+
+act /* action command */
+  = crd [D][0] op:[1-3] {
+    coord.$ = op == 2 ? 'move' : op == 1 ? 'draw' : 'burn';
+    control.push(coord);
+    /* bound-box calculation */
+    var c = current.coord,
+    a = param.apert[current.apert] || {}, b = {
+      x: c.x + c.i,
+      y: c.y + c.j,
+      w: 0.5 * (a.w || a.d || 0),
+      h: 0.5 * (a.h || a.d || 0)
+    };
+    if(bound === null){
+      bound = {
+        x: [b.x - b.w, b.x + b.w],
+        y: [b.y - b.h, b.y + b.h],
+      }
+    }else{
+      bound.x[0] = min(b.x - b.w, bound.x[0]);
+      bound.x[1] = max(b.x + b.w, bound.x[1]);
+      bound.y[0] = min(b.y - b.h, bound.y[0]);
+      bound.y[1] = max(b.y + b.h, bound.y[1]);
+    }
+    /* reset */
+    coord = {};
+    c.i = 0;
+    c.j = 0;
+  }
+
+cmt
+  = [G][0][4] any {}
+
+end
+  = [M][0][2] {}
+
+crd
+  = ( crd:[XYIJ] val:num {
+    crd = norm(crd);
+    val = conv(crd, val);
+    if(val != current.coord[crd]){
+      current.coord[crd] = val;
+      coord[crd] = val;
+    }
+  } )+
+
+int
+  = val:num { return parseInt(val, 10); }
+
+float
+  = val:num { return parseFloat(val); }
+
+num
+  = value:[\-0-9\.]+ { return value.join(''); }
+
+id
+  = value:[0-9]+ { return value.join(''); }
+
+any
+  = ents:[^\*\n]+ { return ents.join(''); }
+
+$
+  = space+
+_
+  = space*
+
+space
+  = [\ \t\n\r]
