@@ -3,6 +3,11 @@
   Currently this project in early development stage.
   Any API and features may be completely changed at the release.
 
+* Requirements
+  
+  Library developed to use with module linking system like [[http://requirejs.org/][RequireJS]].
+  Also [[http://pegjs.majda.cz/][PEG]] parser generator requires peg.js (RequireJS plugin), which can be found in [[https://github.com/katyo/Heliko-Framework][Heliko-Framework]].
+
 * Current progress
 
 ** Gerber
