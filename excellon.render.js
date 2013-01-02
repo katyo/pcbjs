@@ -44,6 +44,8 @@ define(['./fsm'], function(FSM){
 
         if(tool){
           self.radius = 0.5 * self.i2p(tool);
+          self.width = 0.33 * self.radius;
+          self.distan = self.radius - self.width;
         }
       },
       hole: function(cmd){
@@ -56,6 +58,20 @@ define(['./fsm'], function(FSM){
         ctx.beginPath();
         ctx.arc(coord.x, coord.y, self.radius, 0, dual_pi, false);
         ctx.fill();
+
+        ctx.save();
+        ctx.lineWidth = self.width;
+        //ctx.lineCap = 'butt';
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath();
+        ctx.moveTo(coord.x, coord.y - self.distan);
+        ctx.lineTo(coord.x, coord.y + self.distan);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(coord.x - self.distan, coord.y);
+        ctx.lineTo(coord.x + self.distan, coord.y);
+        ctx.stroke();
+        ctx.restore();
       }
     }
   }, {
@@ -81,11 +97,11 @@ define(['./fsm'], function(FSM){
   });
 
   return {
-    render: function(data, ppi, color){
+    render: function(data, opts){
       var i,
       seq = data.ctl,
       cmd,
-      plot = new Plot(data.opt, data.box, ppi, color);
+      plot = new Plot(data.opt, opts.box || data.box, opts.ppi || 300, opts.color);
 
       for(i in seq){
         cmd = seq[i];

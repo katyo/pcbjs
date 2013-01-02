@@ -255,11 +255,11 @@ define(['./fsm'], function(FSM){
   });
 
   return {
-    render: function(data, ppi, color, hatch){
+    render: function(data, opts){
       var i,
       seq = data.ctl,
       cmd,
-      plot = new Plot(data.opt, data.box, ppi, color, hatch);
+      plot = new Plot(data.opt, opts.box || data.box, opts.ppi || 300, opts.color, opts.hatch);
 
       for(i in seq){
         cmd = seq[i];
