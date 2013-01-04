@@ -64,7 +64,7 @@ define(['nls!.'], function(t){
       color: 'yellow',
       index: 0,
       files: /\.(?:gbr|gko|gm[12])$/i
-    }
+    },
     /* stencil */
     /*
     sold_top: {
@@ -76,10 +76,15 @@ define(['nls!.'], function(t){
       title: t("Sold Bottom"),
       color: 'gray',
       files: /\.(?:gbp)$/i
-    }*//*,
+    },*//*,
     padm: { // pad master
       top: /\.(?:gpb)$/i,
       bot: /\.(?:gpt)$/i
-    }*/
+    },*/
+    none: {
+      title: t("Unknown"),
+      color: 'white',
+      files: /$/i
+    }
   };
 });
